@@ -5,6 +5,7 @@ let drivers=[];
 const authGate=document.getElementById('authGate'),appShell=document.getElementById('appShell');
 document.getElementById('productionDate').value=new Date().toISOString().slice(0,10);
 document.getElementById('previewModeBtn').addEventListener('click',()=>openApp('Preview mode'));
+if(configured)document.getElementById('previewModeBtn').classList.add('hidden');
 document.getElementById('authForm').addEventListener('submit',async e=>{e.preventDefault();const error=document.getElementById('authError');if(!configured){error.textContent='Supabase still needs its publishable key. Use Preview mode for now.';return}error.textContent='';const {data, error:authError}=await client.auth.signInWithPassword({email:document.getElementById('authEmail').value.trim(),password:document.getElementById('authPassword').value});if(authError){error.textContent=authError.message;return}openApp(data.user.email)});
 document.getElementById('signOutBtn').addEventListener('click',async()=>{if(client)await client.auth.signOut();appShell.classList.add('hidden');authGate.classList.remove('hidden')});
 function openApp(email){authGate.classList.add('hidden');appShell.classList.remove('hidden');document.getElementById('signedInEmail').textContent=email}

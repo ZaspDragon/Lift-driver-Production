@@ -26,6 +26,10 @@ for select to authenticated using (
   exists (select 1 from public.admin_users a where a.user_id = auth.uid())
 );
 
+-- PullDown Tracker employees can create records after signing in.
+create policy "authenticated users can add pulldowns" on public.pulldowns
+for insert to authenticated with check (true);
+
 -- After creating your one Auth user, replace the email and run this line:
 -- insert into public.admin_users (user_id, email)
 -- select id, email from auth.users where email = 'YOUR-EMAIL-HERE';

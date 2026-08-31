@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>Lift Driver Production</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <section id="authGate" class="auth-gate">
+    <div class="auth-card">
+      <span class="brand-mark">LD</span><p class="eyebrow">PRIVATE SUPERVISOR ACCESS</p>
+      <h2>Sign in to production</h2><p id="authMessage">Only approved supervisor accounts can view or send production reports.</p>
+      <form id="authForm"><label>Email<input id="authEmail" type="email" autocomplete="username" required></label><label>Password<input id="authPassword" type="password" autocomplete="current-password" required></label><button class="primary-btn" type="submit">Sign in</button><p id="authError" class="auth-error"></p></form>
+      <button id="previewModeBtn" class="text-btn" type="button">Preview the app before Supabase setup →</button>
+    </div>
+  </section>
+  <div id="appShell" class="hidden">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">LD</span><span>Lift Driver Production</span></div>
+    <div class="top-actions"><span id="signedInEmail"></span><button id="signOutBtn" class="ghost-btn" type="button">Sign out</button><button id="resetBtn" class="ghost-btn" type="button">Start over</button></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">DAILY PERFORMANCE SCORECARD</p>
+        <h1>Production that counts<br><span>every move.</span></h1>
+        <p class="hero-copy">Upload the daily Bin Transfer Productivity report, add pulldowns and accuracy errors, and see exactly how each score was calculated.</p>
+      </div>
+      <div class="formula-card">
+        <span class="formula-label">SCORING FORMULA</span>
+        <strong>Bin moves + pulldown credit − error penalty</strong>
+        <div class="formula-chips"><span>Goal: 45</span><span>Pulldown: +0.5</span><span>Error: −2</span></div>
+      </div>
+    </section>
+
+    <section id="uploadSection" class="upload-shell">
+      <label id="dropZone" class="drop-zone" for="fileInput">
+        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" />
+        <span class="upload-icon" aria-hidden="true">⇧</span>
+        <strong>Upload Bin Transfer Productivity report</strong>
+        <span>Drop the Excel file here or click to browse</span>
+        <small>.XLSX, .XLS or .CSV</small>
+      </label>
+      <div class="upload-help">
+        <strong>What the app reads</strong>
+        <p>It automatically finds the <b>Employee</b> and <b>Lines Xfer'd</b> columns. Totals and blank rows are ignored.</p>
+        <button id="demoBtn" class="text-btn" type="button">Preview with sample data →</button>
+      </div>
+    </section>
+
+    <section id="dashboard" class="dashboard hidden" aria-live="polite">
+      <div class="dashboard-head">
+        <div><p class="eyebrow">IMPORTED REPORT</p><h2 id="fileName">Daily production</h2></div>
+        <div class="summary-cards">
+          <div><span>Employees</span><strong id="employeeCount">0</strong></div>
+          <div><span>Team bin moves</span><strong id="teamMoves">0</strong></div>
+          <div><span>At goal</span><strong id="atGoal">0</strong></div>
+        </div>
+      </div>
+      <div class="report-tools"><label>Production date<input id="productionDate" type="date"></label><button id="syncPullsBtn" class="secondary-btn" type="button">Sync pulldowns</button><button id="copyReportBtn" class="secondary-btn" type="button">Copy report</button><button id="printReportBtn" class="secondary-btn" type="button">Print / PDF</button></div>
+      <div class="notice"><b>Enter pulldowns and errors below.</b> Scores update instantly. Two pulldowns equal one bin move; every accuracy failure deducts two.</div>
+      <div id="driverGrid" class="driver-grid"></div>
+    </section>
+  </main>
+
+  <template id="driverTemplate">
+    <article class="driver-card">
+      <div class="driver-top">
+        <div><span class="driver-label">LIFT DRIVER</span><h3 class="driver-name"></h3></div>
+        <div class="score-ring"><strong class="score-value">0%</strong><span>FINAL</span></div>
+      </div>
+      <div class="inputs">
+        <label>Bin moves<input class="bin-input" type="number" min="0" step="1" readonly /></label>
+        <label>Pulldowns<input class="pulldown-input" type="number" min="0" step="1" value="0" inputmode="numeric" /></label>
+        <label>Accuracy errors<input class="error-input" type="number" min="0" step="1" value="0" inputmode="numeric" /></label>
+      </div>
+      <div class="calculation">
+        <div><span>Bin moves</span><strong class="calc-bin"></strong></div>
+        <span class="operator">+</span>
+        <div><span>Pulldown credit</span><strong class="calc-pull"></strong></div>
+        <span class="operator">−</span>
+        <div><span>Error penalty</span><strong class="calc-error"></strong></div>
+        <span class="operator">=</span>
+        <div class="adjusted"><span>Adjusted moves</span><strong class="calc-total"></strong></div>
+      </div>
+      <div class="progress"><div class="progress-bar"></div></div>
+      <p class="explanation"></p>
+    </article>
+  </template>
+  </div>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

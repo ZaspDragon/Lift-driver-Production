@@ -1,4 +1,5 @@
 const GOAL=45,PULLDOWN_VALUE=.5,ERROR_PENALTY=2;
+const ALLOWED_DRIVERS=['Haven','Dawitt','Kristopher','Dury','Diamond'];
 const cfg=window.LIFT_DRIVER_CONFIG||{},configured=Boolean(cfg.supabaseUrl&&cfg.supabaseAnonKey),client=configured?supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null;
 const fileInput=document.getElementById('fileInput'),dropZone=document.getElementById('dropZone'),dashboard=document.getElementById('dashboard'),uploadSection=document.getElementById('uploadSection'),grid=document.getElementById('driverGrid'),template=document.getElementById('driverTemplate');
 let drivers=[];
@@ -11,7 +12,7 @@ document.getElementById('signOutBtn').addEventListener('click',async()=>{if(clie
 function openApp(email){authGate.classList.add('hidden');appShell.classList.remove('hidden');document.getElementById('signedInEmail').textContent=email}
 if(configured)client.auth.getSession().then(({data})=>data.session&&openApp(data.session.user.email));
 
-const demo=[['Diamond Whitner',30],['Dawitt Mengesha',41],['Dury Anderson',17],['Kristopher Mintier',7],['Brandon Evanshine',8]];
+const demo=[['Haven',9],['Dawitt',41],['Kristopher',7],['Dury',17],['Diamond',30]];
 document.getElementById('demoBtn').addEventListener('click',()=>loadDrivers(demo,'Sample Bin Transfer Productivity.xlsx'));
 document.getElementById('resetBtn').addEventListener('click',()=>{drivers=[];grid.innerHTML='';dashboard.classList.add('hidden');uploadSection.classList.remove('hidden');fileInput.value=''});
 fileInput.addEventListener('change',e=>e.target.files[0]&&readFile(e.target.files[0]));
@@ -31,7 +32,11 @@ function extractDrivers(rows){
  const employeeCol=headers.indexOf('employee');
  const movesCol=headers.findIndex(h=>h.includes("lines xfer")||h.includes('bin move')||h.includes('lines transferred'));
  if(movesCol<0)throw new Error('Moves column not found');
- return rows.slice(headerIndex+1).map(row=>[String(row[employeeCol]??'').trim(),Number(row[movesCol])||0]).filter(([name])=>name&&name.toLowerCase()!=='totals');
+ return rows.slice(headerIndex+1).map(row=>{
+   const reportName=String(row[employeeCol]??'').trim();
+   const driver=ALLOWED_DRIVERS.find(name=>reportName.toLowerCase().startsWith(name.toLowerCase()));
+   return driver?[driver,Number(row[movesCol])||0]:null;
+ }).filter(Boolean);
 }
 function loadDrivers(data,fileName){
  drivers=data.map(([name,binMoves])=>({name,binMoves,pulldowns:0,errors:0}));
@@ -51,7 +56,7 @@ function render(){
 function score(d){const pullCredit=d.pulldowns*PULLDOWN_VALUE,errorCost=d.errors*ERROR_PENALTY,adjusted=Math.max(0,d.binMoves+pullCredit-errorCost),percent=adjusted/GOAL*100;return{pullCredit,errorCost,adjusted,percent}}
 function updateCard(card,d){const s=score(d),fmt=n=>Number.isInteger(n)?n:n.toFixed(2).replace(/0$/,'');card.querySelector('.calc-bin').textContent=fmt(d.binMoves);card.querySelector('.calc-pull').textContent=`+${fmt(s.pullCredit)}`;card.querySelector('.calc-error').textContent=`−${fmt(s.errorCost)}`;card.querySelector('.calc-total').textContent=fmt(s.adjusted);card.querySelector('.score-value').textContent=`${s.percent.toFixed(1)}%`;card.querySelector('.progress-bar').style.width=`${Math.min(100,s.percent)}%`;card.classList.remove('status-low','status-close','status-goal');card.classList.add(s.percent>=100?'status-goal':s.percent>=80?'status-close':'status-low');card.querySelector('.explanation').innerHTML=`<b>${d.name}</b> completed <b>${fmt(d.binMoves)} bin moves</b> and <b>${fmt(d.pulldowns)} pulldowns</b>, adding ${fmt(s.pullCredit)} move credit. ${d.errors} accuracy ${d.errors===1?'error':'errors'} deducted ${fmt(s.errorCost)} moves. Final: <b>${fmt(s.adjusted)} of ${GOAL} = ${s.percent.toFixed(1)}%</b>.`}
 function updateSummary(){document.getElementById('employeeCount').textContent=drivers.length;document.getElementById('teamMoves').textContent=drivers.reduce((a,d)=>a+d.binMoves,0);document.getElementById('atGoal').textContent=drivers.filter(d=>score(d).percent>=100).length}
-document.getElementById('syncPullsBtn').addEventListener('click',async()=>{if(!client){alert('Connect Supabase first, or enter pulldowns manually.');return}const day=document.getElementById('productionDate').value,start=new Date(day+'T00:00:00'),end=new Date(day+'T00:00:00');end.setDate(end.getDate()+1);const {data,error}=await client.from('pulldowns').select('driver_name,created_at').gte('created_at',start.toISOString()).lt('created_at',end.toISOString());if(error){alert(error.message);return}const totals={};(data||[]).forEach(row=>{const key=String(row.driver_name||'').trim().toLowerCase();totals[key]=(totals[key]||0)+1});drivers.forEach(d=>d.pulldowns=totals[d.name.trim().toLowerCase()]||0);render();alert('Pulldown totals synced for '+day+'.')});
+document.getElementById('syncPullsBtn').addEventListener('click',async()=>{if(!client){alert('Connect Supabase first, or enter pulldowns manually.');return}const day=document.getElementById('productionDate').value,start=new Date(day+'T00:00:00'),end=new Date(day+'T00:00:00');end.setDate(end.getDate()+1);const {data,error}=await client.from('pulldowns').select('driver_name,created_at').gte('created_at',start.toISOString()).lt('created_at',end.toISOString());if(error){alert(error.message);return}const totals={};ALLOWED_DRIVERS.forEach(name=>totals[name.toLowerCase()]=0);(data||[]).forEach(row=>{const recorded=String(row.driver_name||'').trim().toLowerCase(),driver=ALLOWED_DRIVERS.find(name=>recorded.startsWith(name.toLowerCase()));if(driver)totals[driver.toLowerCase()]++});drivers.forEach(d=>d.pulldowns=totals[d.name.toLowerCase()]||0);render();alert('Pulldown totals synced for '+day+'.')});
 function reportText(){return ['Lift Driver Production — '+document.getElementById('productionDate').value,'Goal: 45 | Pulldown value: 0.5 | Error penalty: 2','',...drivers.map(d=>{const s=score(d);return `${d.name}: ${d.binMoves} bin moves + ${d.pulldowns} pulldowns (${s.pullCredit}) - ${d.errors} errors (${s.errorCost}) = ${s.adjusted} adjusted moves — ${s.percent.toFixed(1)}%`})].join('\n')}
 document.getElementById('copyReportBtn').addEventListener('click',async()=>{await navigator.clipboard.writeText(reportText());alert('Production report copied.')});
 document.getElementById('printReportBtn').addEventListener('click',()=>window.print());
